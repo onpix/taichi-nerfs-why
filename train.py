@@ -8,6 +8,7 @@ import numpy as np
 import taichi as ti
 import torch
 from datasets import dataset_dict
+from typing import Any
 from datasets.ray_utils import get_rays
 from einops import rearrange
 # models
@@ -15,6 +16,7 @@ from kornia.utils.grid import create_meshgrid3d
 from modules.losses import NeRFLoss
 from modules.networks import TaichiNGP
 from modules.rendering import MAX_SAMPLES, render
+from rich import print
 from modules.utils import load_ckpt, depth2img
 from opt import get_opts
 from show_gui import NGPGUI
@@ -24,18 +26,35 @@ from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 # optimizer, losses
 # from apex.optimizers import FusedAdam
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from lion_pytorch import Lion
 # data
 from torch.utils.data import DataLoader
 # metrics
 from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
+import datetime
+from pathlib import Path
 
 warnings.filterwarnings("ignore")
+
+
+def check_time():
+    # train.py must be called under src/../
+    sync_time = Path('./src/modified.lock').read_text()[:-1]
+    sync_timedelta = datetime.datetime.now() - datetime.datetime.strptime(
+        sync_time, "%a, %d %b %Y %H:%M:%S %z").replace(tzinfo=None)
+    if sync_timedelta > datetime.timedelta(minutes=1):
+        print(
+            f'This codebase is synced at: {sync_time} (more than 1 minutes ago). If you has just modified the code, remember to run upload.sh')
+
+
+check_time()
 
 
 class NeRFSystem(LightningModule):
 
     def __init__(self, hparams):
         super().__init__()
+        self.hparams: Any
         self.save_hyperparameters(hparams)
 
         self.warmup_steps = 256
@@ -115,7 +134,8 @@ class NeRFSystem(LightningModule):
                 net_params += [p]
 
         opts = []
-        self.net_opt = torch.optim.Adam(net_params, self.hparams.lr, eps=1e-15)
+        self.net_opt = eval(self.hparams.optim)(
+            net_params, self.hparams.lr, eps=1e-15)
         opts += [self.net_opt]
         net_sch = CosineAnnealingLR(self.net_opt, self.hparams.num_epochs,
                                     self.hparams.lr / 30)
@@ -124,14 +144,14 @@ class NeRFSystem(LightningModule):
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset,
-                          num_workers=16,
+                          num_workers=8,
                           persistent_workers=True,
                           batch_size=None,
                           pin_memory=True)
 
     def val_dataloader(self):
         return DataLoader(self.test_dataset,
-                          num_workers=8,
+                          num_workers=1,
                           batch_size=None,
                           pin_memory=True)
 
@@ -283,7 +303,7 @@ if __name__ == '__main__':
         dirpath=f'ckpts/{hparams.dataset_name}/{hparams.exp_name}',
         filename='{epoch:d}',
         save_weights_only=True,
-        every_n_epochs=hparams.num_epochs,
+        every_n_epochs=hparams.num_epochs // 4,
         save_on_train_epoch_end=True,
         save_top_k=-1)
     callbacks = [ckpt_cb, TQDMProgressBar(refresh_rate=1)]
@@ -317,7 +337,7 @@ if __name__ == '__main__':
                         [imageio.imread(img) for img in imgs],
                         fps=24,
                         macro_block_size=1)
-    
+
     if hparams.gui:
         ti.reset()
         if not hparams.val_only:
@@ -331,4 +351,3 @@ if __name__ == '__main__':
         dataset = dataset_dict[hparams.dataset_name](**kwargs)
 
         NGPGUI(hparams, dataset.K, dataset.img_wh, dataset.poses).render()
-

@@ -1,5 +1,7 @@
 import taichi as ti
 import torch
+import cv2
+import numpy as np
 from taichi.math import uvec3
 
 taichi_block_size = 128
@@ -215,6 +217,7 @@ def load_ckpt(model, ckpt_path, model_name='model', prefixes_to_ignore=[]):
                                            prefixes_to_ignore)
     model_dict.update(checkpoint_)
     model.load_state_dict(model_dict)
+
 
 def depth2img(depth):
     depth = (depth - depth.min()) / (depth.max() - depth.min())

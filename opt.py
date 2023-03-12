@@ -70,6 +70,10 @@ def get_opts():
         help='''whether to train with random bg color (real scene only)
                         to avoid objects with black color to be predicted as transparent
                         ''')
+    parser.add_argument('--optim',
+                        type=str,
+                        default='torch.optim.Adam',
+                        help='Name of the optimizer')
 
     # validation options
     parser.add_argument('--val_only',

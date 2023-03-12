@@ -93,7 +93,7 @@ def run_ffmpeg(args):
 	do_system(f"{ffmpeg_binary} -i {video} -qscale:v 1 -qmin 1 -vf \"fps={fps}{time_slice_value}\" {images}/%04d.jpg")
 
 def run_colmap(args):
-	colmap_binary = "colmap"
+	colmap_binary = "/Users/why/Desktop/COLMAP.app/Contents/MacOS/colmap"
 
 	# On Windows, if FFmpeg isn't found, try automatically downloading it from the internet
 	if os.name == "nt" and os.system(f"where {colmap_binary} >nul 2>nul") != 0:

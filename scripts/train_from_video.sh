@@ -17,9 +17,10 @@ echo "video path $VIDEO_FILE"
 echo "scale $SCALE"
 echo "video fps $VIDEO_FPS"
 
-pushd data
-python3 colmap2nerf.py --video_in $VIDEO_FILE --video_fps $VIDEO_FPS --run_colmap --aabb_scale $SCALE --images images
-mv colmap_sparse sparse
-popd
+# pushd data
+# python3 colmap2nerf.py --video_in $VIDEO_FILE --video_fps $VIDEO_FPS --run_colmap --aabb_scale $SCALE --images images
+# mv colmap_sparse sparse
+# popd
 
+# given a colmap result
 python3 train.py --root_dir data --dataset_name colmap --exp_name custom --downsample 0.25  --num_epochs 20 --scale $SCALE --gui
